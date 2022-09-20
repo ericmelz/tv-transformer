@@ -56,19 +56,35 @@ def demo1():
     print(series)
 
 
+def get_plex_name(tvdb, series_name, episode_name):
+    results = tvdb.search(series_name, type='series')
+    result = results[0]
+    tvdb_id = int(result['tvdb_id'])
+
+    # fetching a season's episode list
+    series = tvdb.get_series_extended(tvdb_id)
+    series_name = series['name']
+    for series_season in sorted(series['seasons'], key=lambda x: (x['type']['name'], x['number'])):
+        if series_season['type']['name'] == 'Aired Order':
+            season = tvdb.get_season_extended(series_season['id'])
+            for episode in season['episodes']:
+                if episode['name'] == episode_name:
+                    return f'{series_name} - S{series_season["number"]:02}E{episode["number"]:02} - {episode["name"]}'
+
+
 def demo2():
     print('demo2')
     api_key = os.environ.get('TVDB_API_KEY')
     pin = os.environ.get('TVDB_PIN')
-    print(f'api key is {api_key}')
-    print(f'PIN is {pin}')
     tvdb = tvdb_v4_official.TVDB(api_key, pin)
-    results = tvdb.search('build it bigger')
-    print(f'{len(results)} {results}')
-    results = tvdb.search('build it bigger', type='series')
-    print(f'{len(results)} {results}')
-    results = tvdb.search('build it bigger', type='person')
-    print(f'{len(results)} {results}')
+    series_name = 'Foodography'
+    episode_name = 'Olive Oil'
+    # episode_name = 'Los Angeles'
+    # series_name = 'Build it Bigger'
+    # episode_name = 'Hong Kong Bridge'
+    plex_name = get_plex_name(tvdb, series_name, episode_name)
+    print(plex_name)
+
 
 
 if __name__ == '__main__':
