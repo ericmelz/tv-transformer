@@ -3,7 +3,7 @@ import os
 import tvdb_v4_official
 
 
-def demo():
+def demo1():
     print('hey')
     api_key = os.environ.get('TVDB_API_KEY')
     pin = os.environ.get('TVDB_PIN')
@@ -56,5 +56,20 @@ def demo():
     print(series)
 
 
+def demo2():
+    print('demo2')
+    api_key = os.environ.get('TVDB_API_KEY')
+    pin = os.environ.get('TVDB_PIN')
+    print(f'api key is {api_key}')
+    print(f'PIN is {pin}')
+    tvdb = tvdb_v4_official.TVDB(api_key, pin)
+    results = tvdb.search('build it bigger')
+    print(f'{len(results)} {results}')
+    results = tvdb.search('build it bigger', type='series')
+    print(f'{len(results)} {results}')
+    results = tvdb.search('build it bigger', type='person')
+    print(f'{len(results)} {results}')
+
+
 if __name__ == '__main__':
-    demo()
+    demo2()
