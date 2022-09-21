@@ -29,7 +29,9 @@ from collections import Counter
 
 import tvdb_v4_official
 
-SHOWS_TO_PROCESS = 10
+# SHOWS_TO_SKIP = 24
+SHOWS_TO_SKIP = None
+SHOWS_TO_PROCESS = None
 OUTPUT_DIR = '/tmp/transformer'
 
 
@@ -70,14 +72,16 @@ def get_series_from_src(tvdb, src_dir):
     series_rejects = []
     count = 0
     for directory in dirs:
+        count += 1
+        if SHOWS_TO_SKIP is not None and count <= SHOWS_TO_SKIP:
+            continue
         series = get_series(tvdb, directory)
         if series is not None:
             series_names.append(series)
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
             series_rejects.append(directory)
-        count += 1
-        if count == SHOWS_TO_PROCESS:
+        if SHOWS_TO_PROCESS is not None and count == SHOWS_TO_PROCESS:
             break  # for testing
     return series_names, series_rejects
 
@@ -89,6 +93,8 @@ def make_histogram_for_sentence(sentence):
     :param sentence: english sentence
     :return: dictionary of term counts
     """
+    if sentence is None:
+        return Counter()
     s = sentence.lower()
     s = re.sub('[^A-Za-z0-9]', ' ', s)
     tokens = s.split()
@@ -172,8 +178,13 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
     # todo if not a perfect match, generate partial matches and offer None of the above, querying user
     tvdb_episodes = get_tvdb_episodes_for_series(tvdb, series_id)
     if not tvdb_episodes:
-        raise Exception(f"Couldn't find any episodes for series {series_name}")
-    tvdb_episodes = sorted(tvdb_episodes)
+        print(f"** ERROR Couldn't find any episodes for series {series_name}")
+        return [], []
+    try:
+        tvdb_episodes = sorted(tvdb_episodes)
+    except TypeError as e:
+        print(f"** ERROR while sorting tvdb_episodes for {series_name}")
+        return [], []
     tvdb_episodes = compute_candidate_histograms(tvdb_episodes)
     mappings = []
     episode_rejects = []
