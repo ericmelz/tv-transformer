@@ -174,6 +174,7 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
     tvdb_episodes = sorted(tvdb_episodes)
     tvdb_episodes = compute_candidate_histograms(tvdb_episodes)
     mappings = []
+    rejects = []
     src_path_base = f'{src_dir}/{series_dir}'
     dest_path_base = f'{dest_dir}/{series_name}'
     src_episode_files = os.listdir(src_path_base)
@@ -203,8 +204,10 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
                 mapping = generate_mapping(src_path_base, src_episode_name, extension, dest_path_base, series_name,
                                            episode_id, episode_name)
                 mappings.append(mapping)
+            else:
+                rejects.append(f'{src_path_base}/{src_episode_file}')
 
-    return mappings
+    return mappings, rejects
 
 
 def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/Volumes/video/TV Shows'):
@@ -213,13 +216,19 @@ def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/V
     tvdb = tvdb_v4_official.TVDB(api_key, pin)
     series = get_series_from_src(tvdb, src_dir)
     mappings = []
+    rejects = []
     for series_dir, series_name, series_id in series:
-        episode_mappings = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, dest_dir)
+        episode_mappings, episode_rejects = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, dest_dir)
         mappings.extend(episode_mappings)
-    return mappings
+        rejects.extend(episode_rejects)
+    return mappings, rejects
 
 
 if __name__ == '__main__':
-    mappings = plan()
-    for mapping in mappings:
+    main_mappings, main_rejects = plan()
+    print('Mappings:')
+    for mapping in main_mappings:
         print(mapping)
+    print('\nRejects:')
+    for reject in main_rejects:
+        print(reject)
