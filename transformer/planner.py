@@ -64,13 +64,16 @@ def get_series_from_src(tvdb, src_dir):
     dirs = os.listdir(src_dir)
     print(dirs)
     series_names = []
+    count = 0
     for directory in dirs:
         series = get_series(tvdb, directory)
         if series is not None:
             series_names.append(series)
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
-        break  # for testing
+        count += 1
+        if count == 4:
+            break  # for testing
     return series_names
 
 
@@ -175,6 +178,13 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
     src_path_base = f'{src_dir}/{series_dir}'
     dest_path_base = f'{dest_dir}/{series_name}'
     src_episode_files = os.listdir(src_path_base)
+    subdir_files = []
+    # Handle case where subdirs can contain seasons
+    for src_episode_file in src_episode_files:
+        if os.path.isdir(f'{src_path_base}/{src_episode_file}'):
+            subdir_files.extend(os.listdir(f'{src_path_base}/{src_episode_file}'))
+    if len(subdir_files) > 0:
+        src_episode_files = subdir_files
     for src_episode_file in src_episode_files:
         src_episode_name, extension = os.path.splitext(src_episode_file)
         scores = compute_scores(src_episode_name, tvdb_episodes)
@@ -201,4 +211,6 @@ def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/V
 
 
 if __name__ == '__main__':
-    print(plan())
+    mappings = plan()
+    for mapping in mappings:
+        print(mapping)
