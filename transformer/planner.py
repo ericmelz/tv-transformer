@@ -22,14 +22,15 @@ Matching alg:
 strip out special chars
 
 """
+import json
 import os
 import re
 from collections import Counter
 
 import tvdb_v4_official
 
-
 SHOWS_TO_PROCESS = 10
+OUTPUT_DIR = '/tmp/transformer'
 
 
 def get_tvdb_episodes_for_series(tvdb, series_id):
@@ -66,6 +67,7 @@ def get_series(tvdb, candidate):
 def get_series_from_src(tvdb, src_dir):
     dirs = os.listdir(src_dir)
     series_names = []
+    series_rejects = []
     count = 0
     for directory in dirs:
         series = get_series(tvdb, directory)
@@ -73,10 +75,11 @@ def get_series_from_src(tvdb, src_dir):
             series_names.append(series)
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
+            series_rejects.append(directory)
         count += 1
         if count == SHOWS_TO_PROCESS:
             break  # for testing
-    return series_names
+    return series_names, series_rejects
 
 
 def make_histogram_for_sentence(sentence):
@@ -116,7 +119,6 @@ def compute_candidate_histograms(candidates):
     """
     Given a sorted list of candidates of the form (seasonId, name), sorted by seasonId
     Return a list of the form (seasonId, name, hist), where hist is the candidate's histogram
-    :param query:
     :param candidates:
     :return:
     """
@@ -174,7 +176,7 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
     tvdb_episodes = sorted(tvdb_episodes)
     tvdb_episodes = compute_candidate_histograms(tvdb_episodes)
     mappings = []
-    rejects = []
+    episode_rejects = []
     src_path_base = f'{src_dir}/{series_dir}'
     dest_path_base = f'{dest_dir}/{series_name}'
     src_episode_files = os.listdir(src_path_base)
@@ -186,6 +188,7 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
     if len(subdir_files) > 0:
         src_episode_files = subdir_files
     for src_episode_file in src_episode_files:
+        print(f'  Processing {src_episode_file}')
         src_episode_name, extension = os.path.splitext(src_episode_file)
         scores = compute_scores(src_episode_name, tvdb_episodes)
         if scores[0][-1] == 1.0:
@@ -205,30 +208,55 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
                                            episode_id, episode_name)
                 mappings.append(mapping)
             else:
-                rejects.append(f'{src_path_base}/{src_episode_file}')
+                episode_rejects.append(f'{src_path_base}/{src_episode_file}')
 
-    return mappings, rejects
+    return mappings, episode_rejects
+
+
+def emit_mappings_and_rejects(mappings, series_rejects, episode_rejects):
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
+    mapping_file = open(f'{OUTPUT_DIR}/mappings.json', 'w')
+    for mapping in mappings:
+        mapping_file.write(json.dumps(mapping) + '\n')
+    mapping_file.close()
+
+    series_reject_file = open(f'{OUTPUT_DIR}/series-rejects.txt', 'w')
+    for reject in series_rejects:
+        series_reject_file.write(reject + '\n')
+    series_reject_file.close()
+
+    episode_reject_file = open(f'{OUTPUT_DIR}/episode-rejects.txt', 'w')
+    for reject in episode_rejects:
+        episode_reject_file.write(reject + '\n')
+    episode_reject_file.close()
 
 
 def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/Volumes/video/TV Shows'):
     api_key = os.environ.get('TVDB_API_KEY')
     pin = os.environ.get('TVDB_PIN')
     tvdb = tvdb_v4_official.TVDB(api_key, pin)
-    series = get_series_from_src(tvdb, src_dir)
+    series, series_rejects = get_series_from_src(tvdb, src_dir)
     mappings = []
-    rejects = []
+    episode_rejects = []
     for series_dir, series_name, series_id in series:
-        episode_mappings, episode_rejects = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, dest_dir)
+        print(f'Processing series {series_name}')
+        episode_mappings, rejects = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id,
+                                                                    dest_dir)
         mappings.extend(episode_mappings)
-        rejects.extend(episode_rejects)
-    return mappings, rejects
+        episode_rejects.extend(rejects)
+    emit_mappings_and_rejects(mappings, series_rejects, episode_rejects)
+    return mappings, series_rejects, episode_rejects
 
 
 if __name__ == '__main__':
-    main_mappings, main_rejects = plan()
+    main_mappings, main_series_rejects, main_episode_rejects = plan()
     print('Mappings:')
-    for mapping in main_mappings:
-        print(mapping)
-    print('\nRejects:')
-    for reject in main_rejects:
-        print(reject)
+    for main_mapping in main_mappings:
+        print(main_mapping)
+    print('\nSeries Rejects:')
+    for main_series_reject in main_series_rejects:
+        print(main_series_reject)
+    print('\nEpisode Rejects:')
+    for main_episode_reject in main_episode_rejects:
+        print(main_episode_reject)
