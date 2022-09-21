@@ -58,7 +58,11 @@ def demo1():
 
 def get_plex_name(tvdb, series_name, episode_name):
     results = tvdb.search(series_name, type='series')
-    result = results[0]
+    if len(results) > 1:
+        print(f'{[series["name"] for series in results]}')
+        result = results[1]  # hacky
+    else:
+        result = results[0]
     tvdb_id = int(result['tvdb_id'])
 
     # fetching a season's episode list
@@ -72,18 +76,41 @@ def get_plex_name(tvdb, series_name, episode_name):
                     return f'{series_name} - S{series_season["number"]:02}E{episode["number"]:02} - {episode["name"]}'
 
 
+def print_all_episodes(tvdb, series_name):
+    results = tvdb.search(series_name, type='series')
+    print(f'{len(results)} matching series')
+    if len(results) > 1:
+        print(f'{[series["name"] for series in results]}')
+        result = results[1]  # hacky
+    else:
+        result = results[0]
+    tvdb_id = int(result['tvdb_id'])
+
+    # fetching a season's episode list
+    series = tvdb.get_series_extended(tvdb_id)
+    series_name = series['name']
+    for series_season in sorted(series['seasons'], key=lambda x: (x['type']['name'], x['number'])):
+        if series_season['type']['name'] == 'Aired Order':
+            season = tvdb.get_season_extended(series_season['id'])
+            for episode in season['episodes']:
+                print(f'{series_name} - S{series_season["number"]:02}E{episode["number"]:02} - {episode["name"]}')
+
+
 def demo2():
     print('demo2')
     api_key = os.environ.get('TVDB_API_KEY')
     pin = os.environ.get('TVDB_PIN')
     tvdb = tvdb_v4_official.TVDB(api_key, pin)
-    series_name = 'Foodography'
-    episode_name = 'Olive Oil'
+    # series_name = 'Foodography'
+    # episode_name = 'Olive Oil'
     # episode_name = 'Los Angeles'
     # series_name = 'Build it Bigger'
-    # episode_name = 'Hong Kong Bridge'
-    plex_name = get_plex_name(tvdb, series_name, episode_name)
-    print(plex_name)
+    series_name = '30 Minute Meals'
+    episode_names = ['Cold and New']
+    for episode_name in episode_names:
+        plex_name = get_plex_name(tvdb, series_name, episode_name)
+        print(plex_name)
+    print_all_episodes(tvdb, series_name)
 
 
 if __name__ == '__main__':
