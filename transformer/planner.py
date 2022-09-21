@@ -55,7 +55,10 @@ def get_series(tvdb, candidate):
         print(f'Select a series that matches "{candidate}"')
         for i, series in enumerate(results):
             print(f'{i}) {series["name"]}')
+        print(f'{len(results)}) None of the above')
         i = int(input())
+        if i == len(results):
+            return None
         result = results[i]  # hacky
     else:
         result = results[0]
@@ -72,7 +75,6 @@ def get_series_from_src(tvdb, dirname='/Volumes/EricRandiShare/iTunes_Library/TV
             series_names.append(series)
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
-        break  # for testing
     return series
 
 
