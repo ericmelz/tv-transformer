@@ -65,8 +65,8 @@ def get_series(tvdb, candidate):
     return candidate, result['name'], result['tvdb_id']
 
 
-def get_series_from_src(tvdb, dirname='/Volumes/EricRandiShare/iTunes_Library/TV Shows'):
-    dirs = os.listdir(dirname)
+def get_series_from_src(tvdb, src_dir):
+    dirs = os.listdir(src_dir)
     print(dirs)
     series_names = []
     for directory in dirs:
@@ -75,14 +75,31 @@ def get_series_from_src(tvdb, dirname='/Volumes/EricRandiShare/iTunes_Library/TV
             series_names.append(series)
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
-    return series
+        break  # for testing
+    return seriesE
 
 
-def plan():
+def get_episodes_for_series(tvdb, src_dir, dirname, series_name, series_id):
+    # todo generate a tuple of the original name (including extension) and the episode name (including extension)
+    # todo if not a perfect match, generate partial matches and offer None of the above, querying user
+    episodes = []
+    src_dir = f'{src_dir}/{dirname}'
+    return episodes
+
+
+def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/Volumes/video/TV Shows'):
     api_key = os.environ.get('TVDB_API_KEY')
     pin = os.environ.get('TVDB_PIN')
     tvdb = tvdb_v4_official.TVDB(api_key, pin)
-    series = get_series_from_src(tvdb)
+    series = get_series_from_src(tvdb, src_dir)
+    mappings = []
+    for dirname, series_name, series_id in series:
+        episodes = get_episodes_for_series(tvdb, src_dir, dirname, series_name, series_id)
+        for filename, episode_name in episodes:
+            src = f'{src_dir}/{dirname}/{filename}'
+            dest = f'{dest_dir}/{series_name}/{episode_name}'
+            mapping = {'src': src, 'dest': dest}
+            mappings.append(mapping)
     return series
 
 
