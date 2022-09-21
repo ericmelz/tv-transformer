@@ -144,17 +144,48 @@ def compute_score(query, candidate):
     return score
 
 
-def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id):
-    # todo generate a tuple of the original name (including extension) and the episode name (including extension)
+def generate_mapping(src_path_base, src_episode_name, extension, dest_path_base, series_name, episode_id, episode_name):
+    result = dict()
+    result['src'] = f'{src_path_base}/{src_episode_name}{extension}'
+    result['dest'] = f'{dest_path_base}/{series_name} - {episode_id} - {episode_name}{extension}'
+    return result
+
+
+def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, dest_dir):
+    """
+    generate a list of pairs of the original name (including extension) and the episode name (including extension)
+    :param tvdb:
+    :param src_dir:
+    :param series_dir:
+    :param series_name:
+    :param series_id:
+    :param dest_dir:
+    :return: list of pairs, mapping src file to dest file
+    """
     # todo if not a perfect match, generate partial matches and offer None of the above, querying user
     tvdb_episodes = get_tvdb_episodes_for_series(tvdb, series_id)
+    if not tvdb_episodes:
+        raise Exception(f"Couldn't find any episodes for series {series_name}")
     tvdb_episodes = sorted(tvdb_episodes)
-    print(f'Episodes for {series_name}:')
-    for episode in tvdb_episodes:
-        print(f'  {episode}')
-    episodes = []
+    tvdb_episodes = compute_candidate_histograms(tvdb_episodes)
+    # print(f'Episodes for {series_name}:')
+    # for episode in tvdb_episodes:
+    #     print(f'  {episode}')
+    mappings = []
     src_path_base = f'{src_dir}/{series_dir}'
-    return episodes
+    dest_path_base = f'{dest_dir}/{series_name}'
+    src_episode_files = os.listdir(src_path_base)
+    for src_episode_file in src_episode_files:
+        src_episode_name, extension = os.path.splitext(src_episode_file)
+        scores = compute_scores(src_episode_name, tvdb_episodes)
+        if scores[0][-1] == 1.0:
+            episode_id, episode_name, idx, score = scores[0]
+            mapping = generate_mapping(src_path_base, src_episode_name, extension, dest_path_base, series_name,
+                                       episode_id, episode_name)
+            mappings.append(mapping)
+        else:
+            print(f"TODO: SELECT EPISODE FOR IMPERFECTLY MATCHED EPISODE '{src_episode_name}")
+    return mappings
 
 
 def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/Volumes/video/TV Shows'):
@@ -164,13 +195,9 @@ def plan(src_dir='/Volumes/EricRandiShare/iTunes_Library/TV Shows', dest_dir='/V
     series = get_series_from_src(tvdb, src_dir)
     mappings = []
     for series_dir, series_name, series_id in series:
-        episodes = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id)
-        for filename, episode_name in episodes:
-            src = f'{src_dir}/{series_dir}/{filename}'
-            dest = f'{dest_dir}/{series_name}/{episode_name}'
-            mapping = {'src': src, 'dest': dest}
-            mappings.append(mapping)
-    return series
+        episode_mappings = get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, dest_dir)
+        mappings.extend(episode_mappings)
+    return mappings
 
 
 if __name__ == '__main__':
