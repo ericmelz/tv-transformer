@@ -29,6 +29,9 @@ from collections import Counter
 import tvdb_v4_official
 
 
+SHOWS_TO_PROCESS = 10
+
+
 def get_tvdb_episodes_for_series(tvdb, series_id):
     series = tvdb.get_series_extended(series_id)
     result = []
@@ -48,7 +51,7 @@ def get_series(tvdb, candidate):
         return None
     if len(results) > 1:
         print(f'Select a series that matches "{candidate}"')
-        for i, series in enumerate(results):
+        for i, series in list(enumerate(results))[:10]:
             print(f'{i}) {series["name"]}')
         print(f'{len(results)}) None of the above')
         i = int(input())
@@ -62,7 +65,6 @@ def get_series(tvdb, candidate):
 
 def get_series_from_src(tvdb, src_dir):
     dirs = os.listdir(src_dir)
-    print(dirs)
     series_names = []
     count = 0
     for directory in dirs:
@@ -72,7 +74,7 @@ def get_series_from_src(tvdb, src_dir):
         else:
             print(f"***WARNING: COULDN'T FIND SERIES MATCHING {directory}.  Skipping...")
         count += 1
-        if count == 4:
+        if count == SHOWS_TO_PROCESS:
             break  # for testing
     return series_names
 
@@ -171,9 +173,6 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
         raise Exception(f"Couldn't find any episodes for series {series_name}")
     tvdb_episodes = sorted(tvdb_episodes)
     tvdb_episodes = compute_candidate_histograms(tvdb_episodes)
-    # print(f'Episodes for {series_name}:')
-    # for episode in tvdb_episodes:
-    #     print(f'  {episode}')
     mappings = []
     src_path_base = f'{src_dir}/{series_dir}'
     dest_path_base = f'{dest_dir}/{series_name}'
@@ -194,7 +193,17 @@ def get_episodes_for_series(tvdb, src_dir, series_dir, series_name, series_id, d
                                        episode_id, episode_name)
             mappings.append(mapping)
         else:
-            print(f"TODO: SELECT EPISODE FOR IMPERFECTLY MATCHED EPISODE '{src_episode_name}")
+            print(f"Select episode for imperfectly matched episode '{series_name}' - '{src_episode_name}'")
+            for i, (episode_id, episode_name, idx, score) in list(enumerate(scores))[:10]:
+                print(f'{i}) {episode_id} - {episode_name}')
+            print(f'{len(scores)}) None of the above')
+            i = int(input())
+            if i != len(scores):
+                episode_id, episode_name, idx, score = scores[i]
+                mapping = generate_mapping(src_path_base, src_episode_name, extension, dest_path_base, series_name,
+                                           episode_id, episode_name)
+                mappings.append(mapping)
+
     return mappings
 
 
